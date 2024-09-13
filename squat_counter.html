@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スクワット回数記録ページ</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+<h1>スクワット記録ページ</h1>
+
+<!-- ユーザー名 -->
+<p>ユーザー名: <span id="username">ユーザー1</span></p>
+
+<!-- 項目名 -->
+<p>項目名: スクワット累積回数</p>
+
+<!-- 累積回数 -->
+<p>累積回数: <span id="total-count">0</span>回</p>
+
+<!-- スクワット実施回数入力 -->
+<label for="squat-count">スクワット実施回数: </label>
+<input type="number" id="squat-count" value="10" min="1" />
+
+<!-- 登録ボタン -->
+<button id="add-squat-button">登録</button>
+
+<!-- 記録の履歴テーブル -->
+<h2>記録の履歴</h2>
+<table id="history-table">
+    <thead>
+        <tr>
+            <th>登録時刻</th>
+            <th>回数</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<script>
+    // クッキーからデータを取得
+    function getCookie(name) {
+        let matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + "=([^;]*)"));
+        return matches ? decodeURIComponent(matches[1]) : undefined;
+    }
+
+    // クッキーにデータを保存
+    function setCookie(name, value, days) {
+        let date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + date.toUTCString() + "; path=/";
+    }
+
+    // 初期化
+    let totalSquatCount = parseInt(getCookie("totalSquatCount")) || 0;
+    let history = JSON.parse(getCookie("squatHistory") || "[]");
+
+    // 累積回数の表示を更新
+    document.getElementById("total-count").innerText = totalSquatCount;
+
+    // 履歴テーブルの初期表示
+    function updateHistoryTable() {
+        const tbody = document.querySelector("#history-table tbody");
+        tbody.innerHTML = ""; // テーブルをクリア
+        history.forEach(record => {
+            const row = document.createElement("tr");
+            const timeCell = document.createElement("td");
+            const countCell = document.createElement("td");
+            timeCell.innerText = record.time;
+            countCell.innerText = record.count + "回";
+            row.appendChild(timeCell);
+            row.appendChild(countCell);
+            tbody.appendChild(row);
+        });
+    }
+    updateHistoryTable();
+
+    // 登録ボタンのイベントリスナー
+    document.getElementById("add-squat-button").addEventListener("click", function() {
+        const count = parseInt(document.getElementById("squat-count").value);
+        if (isNaN(count) || count <= 0) {
+            alert("正しい回数を入力してください");
+            return;
+        }
+
+        // 累積回数を更新
+        totalSquatCount += count;
+        document.getElementById("total-count").innerText = totalSquatCount;
+        setCookie("totalSquatCount", totalSquatCount, 365);
+
+        // 履歴を更新
+        const currentTime = new Date().toLocaleString();
+        history.push({ time: currentTime, count: count });
+        setCookie("squatHistory", JSON.stringify(history), 365);
+
+        // 履歴テーブルを更新
+        updateHistoryTable();
+    });
+</script>
+
+</body>
+</html>
+
