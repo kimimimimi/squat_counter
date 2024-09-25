@@ -31,12 +31,11 @@
 <!-- 累積回数 -->
 <p>累積回数: <span id="total-count">0</span>回</p>
 
-<!-- スクワット実施回数入力 -->
-<label for="squat-count">スクワット実施回数: </label>
-<input type="number" id="squat-count" value="10" min="1" />
+<!-- 継続日数 -->
+<p>継続日数: <span id="streak">0</span>日</p>
 
-<!-- 登録ボタン -->
-<button id="add-squat-button">登録</button>
+<!-- +10回ボタン -->
+<button id="add-squat-button">+10回</button>
 
 <!-- 記録の履歴テーブル -->
 <h2>記録の履歴</h2>
@@ -65,12 +64,45 @@
         document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + date.toUTCString() + "; path=/";
     }
 
+    // 日付をフォーマット YYYY-MM-DD HH:MM:SS
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = ('0' + (date.getMonth() + 1)).slice(-2);
+        const day = ('0' + date.getDate()).slice(-2);
+        const hours = ('0' + date.getHours()).slice(-2);
+        const minutes = ('0' + date.getMinutes()).slice(-2);
+        const seconds = ('0' + date.getSeconds()).slice(-2);
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     // 初期化
     let totalSquatCount = parseInt(getCookie("totalSquatCount")) || 0;
     let history = JSON.parse(getCookie("squatHistory") || "[]");
+    let lastDate = getCookie("lastDate"); // 最終登録日
+    let streak = parseInt(getCookie("streak")) || 0;
 
-    // 累積回数の表示を更新
+    // 今日の日付を取得
+    const today = formatDate(new Date()).split(' ')[0];
+
+    // 継続日数のカウントアップ処理
+    if (lastDate) {
+        const lastDateObj = new Date(lastDate.split(' ')[0]);
+        const diffTime = new Date(today) - lastDateObj;
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        // 1日以上の差があれば継続カウントを更新
+        if (diffDays === 1) {
+            streak++;
+        } else if (diffDays > 1) {
+            streak = 1; // 1日以上空いたらリセット
+        }
+    } else {
+        streak = 1; // 初めての登録なら1日目
+    }
+
+    // 累積回数と継続日数の表示を更新
     document.getElementById("total-count").innerText = totalSquatCount;
+    document.getElementById("streak").innerText = streak;
 
     // 履歴テーブルの初期表示
     function updateHistoryTable() {
@@ -89,12 +121,22 @@
     }
     updateHistoryTable();
 
+    // 直近の更新時間を保持
+    let lastUpdateTime = history.length > 0 ? new Date(history[history.length - 1].time) : null;
+
     // 登録ボタンのイベントリスナー
     document.getElementById("add-squat-button").addEventListener("click", function() {
-        const count = parseInt(document.getElementById("squat-count").value);
-        if (isNaN(count) || count <= 0) {
-            alert("正しい回数を入力してください");
-            return;
+        const count = 10;
+        const currentTime = new Date();
+
+        // 最後の履歴が10秒以内の場合は加算して時刻を更新
+        if (lastUpdateTime && (currentTime - lastUpdateTime) <= 10000) {
+            // 最後の履歴に加算して時刻を更新
+            history[history.length - 1].count += count;
+            history[history.length - 1].time = formatDate(currentTime);
+        } else {
+            // 新しい履歴を追加
+            history.push({ time: formatDate(currentTime), count: count });
         }
 
         // 累積回数を更新
@@ -102,10 +144,15 @@
         document.getElementById("total-count").innerText = totalSquatCount;
         setCookie("totalSquatCount", totalSquatCount, 365);
 
-        // 履歴を更新
-        const currentTime = new Date().toLocaleString();
-        history.push({ time: currentTime, count: count });
+        // 履歴を保存
         setCookie("squatHistory", JSON.stringify(history), 365);
+
+        // 最終登録日を更新
+        lastUpdateTime = currentTime;
+        setCookie("lastDate", formatDate(currentTime), 365);
+
+        // 継続日数を保存
+        setCookie("streak", streak, 365);
 
         // 履歴テーブルを更新
         updateHistoryTable();
@@ -114,4 +161,3 @@
 
 </body>
 </html>
-
