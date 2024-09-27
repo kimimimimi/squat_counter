@@ -105,20 +105,21 @@
     document.getElementById("streak").innerText = streak;
 
     // 履歴テーブルの初期表示
-    function updateHistoryTable() {
-        const tbody = document.querySelector("#history-table tbody");
-        tbody.innerHTML = ""; // テーブルをクリア
-        history.forEach(record => {
-            const row = document.createElement("tr");
-            const timeCell = document.createElement("td");
-            const countCell = document.createElement("td");
-            timeCell.innerText = record.time;
-            countCell.innerText = record.count + "回";
-            row.appendChild(timeCell);
-            row.appendChild(countCell);
-            tbody.appendChild(row);
-        });
+function updateHistoryTable() {
+    const tbody = document.querySelector("#history-table tbody");
+    tbody.innerHTML = ""; // テーブルをクリア
+    for (let i = history.length - 1; i >= 0; i--) {
+        const record = history[i];
+        const row = document.createElement("tr");
+        const timeCell = document.createElement("td");
+        const countCell = document.createElement("td");
+        timeCell.innerText = record.time;
+        countCell.innerText = record.count + "回";
+        row.appendChild(timeCell);
+        row.appendChild(countCell);
+        tbody.appendChild(row);
     }
+}
     updateHistoryTable();
 
     // 直近の更新時間を保持
@@ -130,7 +131,8 @@
         const currentTime = new Date();
 
         // 最後の履歴が10秒以内の場合は加算して時刻を更新
-        if (lastUpdateTime && (currentTime - lastUpdateTime) <= 10000) {
+        const same_duration = 10000
+        if (lastUpdateTime && (currentTime - lastUpdateTime) <= same_duration) {
             // 最後の履歴に加算して時刻を更新
             history[history.length - 1].count += count;
             history[history.length - 1].time = formatDate(currentTime);
