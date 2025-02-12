@@ -39,6 +39,9 @@
 
 <!-- 記録の履歴テーブル -->
 <h2>記録の履歴</h2>
+<button id="export-button">エクスポート</button>
+<input type="file" id="import-input" accept="application/json" style="display: none;" />
+<button id="import-button">インポート</button>
 <table id="history-table">
     <thead>
         <tr>
@@ -158,6 +161,64 @@ function updateHistoryTable() {
 
         // 履歴テーブルを更新
         updateHistoryTable();
+    });
+</script>
+
+<!-- エクスポートとインポートのボタン -->
+<script>
+    // エクスポート機能
+    document.getElementById("export-button").addEventListener("click", function () {
+        const data = {
+            totalSquatCount: totalSquatCount,
+            history: history,
+            lastDate: getCookie("lastDate"),
+            streak: streak
+        };
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "squat_history.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // インポート機能
+    document.getElementById("import-button").addEventListener("click", function () {
+        document.getElementById("import-input").click();
+    });
+
+    document.getElementById("import-input").addEventListener("change", function (event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // データの適用
+                    totalSquatCount = importedData.totalSquatCount || 0;
+                    history = importedData.history || [];
+                    lastDate = importedData.lastDate || null;
+                    streak = importedData.streak || 0;
+
+                    // クッキーに保存
+                    setCookie("totalSquatCount", totalSquatCount, 365);
+                    setCookie("squatHistory", JSON.stringify(history), 365);
+                    setCookie("lastDate", lastDate, 365);
+                    setCookie("streak", streak, 365);
+
+                    // 表示を更新
+                    document.getElementById("total-count").innerText = totalSquatCount;
+                    document.getElementById("streak").innerText = streak;
+                    updateHistoryTable();
+                    alert("データが正常にインポートされました!");
+                } catch (error) {
+                    alert("インポートに失敗しました。正しいJSONファイルを選択してください。");
+                }
+            };
+            reader.readAsText(file);
+        }
     });
 </script>
 
