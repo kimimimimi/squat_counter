@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>スクワット回数記録ページ</title>
-    <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid black;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スクワット回数記録ページ</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
 
@@ -43,183 +43,219 @@
 <input type="file" id="import-input" accept="application/json" style="display: none;" />
 <button id="import-button">インポート</button>
 <table id="history-table">
-    <thead>
-        <tr>
-            <th>登録時刻</th>
-            <th>回数</th>
-        </tr>
-    </thead>
-    <tbody>
-    </tbody>
+  <thead>
+    <tr>
+      <th>登録時刻</th>
+      <th>回数</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
 </table>
 
 <script>
-    // クッキーからデータを取得
-    function getCookie(name) {
-        let matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()[]\/+^])/g, '\\$1') + "=([^;]*)"));
-        return matches ? decodeURIComponent(matches[1]) : undefined;
+  // ローカルストレージからデータを取得
+  function getLocalStorage(name) {
+    const value = localStorage.getItem(name);
+    return value ? JSON.parse(value) : undefined;
+  }
+
+  // ローカルストレージにデータを保存
+  function setLocalStorage(name, value) {
+    localStorage.setItem(name, JSON.stringify(value));
+  }
+
+  // 日付をフォーマット YYYY-MM-DD HH:MM:SS
+  function formatDate(date) {
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const day = ('0' + date.getDate()).slice(-2);
+    const hours = ('0' + date.getHours()).slice(-2);
+    const minutes = ('0' + date.getMinutes()).slice(-2);
+    const seconds = ('0' + date.getSeconds()).slice(-2);
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  // --- クッキー取得用の関数(よくある実装例) ---
+  function getCookie(name) {
+    const matches = document.cookie.match(new RegExp(
+      "(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"
+    ));
+    return matches ? decodeURIComponent(matches[1]) : undefined;
+  }
+  // ----------------------------------
+
+  // 初期化
+  let totalSquatCount = getLocalStorage("totalSquatCount") || 0;
+  let history = getLocalStorage("squatHistory") || [];
+  let lastDate = getLocalStorage("lastDate"); // 最終登録日
+  let streak = getLocalStorage("streak") || 0;
+
+  // 今日の日付を取得
+  const today = formatDate(new Date()).split(' ')[0];
+
+  // 継続日数のカウントアップ処理
+  if (lastDate) {
+    const lastDateObj = new Date(lastDate.split(' ')[0]);
+    const diffTime = new Date(today) - lastDateObj;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    // 1日以上の差があれば継続カウントを更新
+    if (diffDays === 1) {
+      streak++;
+    } else if (diffDays > 1) {
+      streak = 1; // 1日以上空いたらリセット
     }
+  } else {
+    streak = 1; // 初めての登録なら1日目
+  }
 
-    // クッキーにデータを保存
-    function setCookie(name, value, days) {
-        let date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        document.cookie = name + "=" + encodeURIComponent(value) + "; expires=" + date.toUTCString() + "; path=/";
-    }
+  // 累積回数と継続日数の表示を更新
+  document.getElementById("total-count").innerText = totalSquatCount;
+  document.getElementById("streak").innerText = streak;
 
-    // 日付をフォーマット YYYY-MM-DD HH:MM:SS
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = ('0' + (date.getMonth() + 1)).slice(-2);
-        const day = ('0' + date.getDate()).slice(-2);
-        const hours = ('0' + date.getHours()).slice(-2);
-        const minutes = ('0' + date.getMinutes()).slice(-2);
-        const seconds = ('0' + date.getSeconds()).slice(-2);
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    }
-
-    // 初期化
-    let totalSquatCount = parseInt(getCookie("totalSquatCount")) || 0;
-    let history = JSON.parse(getCookie("squatHistory") || "[]");
-    let lastDate = getCookie("lastDate"); // 最終登録日
-    let streak = parseInt(getCookie("streak")) || 0;
-
-    // 今日の日付を取得
-    const today = formatDate(new Date()).split(' ')[0];
-
-    // 継続日数のカウントアップ処理
-    if (lastDate) {
-        const lastDateObj = new Date(lastDate.split(' ')[0]);
-        const diffTime = new Date(today) - lastDateObj;
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-        // 1日以上の差があれば継続カウントを更新
-        if (diffDays === 1) {
-            streak++;
-        } else if (diffDays > 1) {
-            streak = 1; // 1日以上空いたらリセット
-        }
-    } else {
-        streak = 1; // 初めての登録なら1日目
-    }
-
-    // 累積回数と継続日数の表示を更新
-    document.getElementById("total-count").innerText = totalSquatCount;
-    document.getElementById("streak").innerText = streak;
-
-    // 履歴テーブルの初期表示
-function updateHistoryTable() {
+  // 履歴テーブルの初期表示
+  function updateHistoryTable() {
     const tbody = document.querySelector("#history-table tbody");
     tbody.innerHTML = ""; // テーブルをクリア
     for (let i = history.length - 1; i >= 0; i--) {
-        const record = history[i];
-        const row = document.createElement("tr");
-        const timeCell = document.createElement("td");
-        const countCell = document.createElement("td");
-        timeCell.innerText = record.time;
-        countCell.innerText = record.count + "回";
-        row.appendChild(timeCell);
-        row.appendChild(countCell);
-        tbody.appendChild(row);
+      const record = history[i];
+      const row = document.createElement("tr");
+      const timeCell = document.createElement("td");
+      const countCell = document.createElement("td");
+      timeCell.innerText = record.time;
+      countCell.innerText = record.count + "回";
+      row.appendChild(timeCell);
+      row.appendChild(countCell);
+      tbody.appendChild(row);
     }
-}
+  }
+  updateHistoryTable();
+
+  // 直近の更新時間を保持
+  let lastUpdateTime = history.length > 0 ? new Date(history[history.length - 1].time) : null;
+
+  // 登録ボタンのイベントリスナー
+  document.getElementById("add-squat-button").addEventListener("click", function() {
+    const count = 10;
+    const currentTime = new Date();
+
+    // 最後の履歴が10秒以内の場合は加算して時刻を更新
+    const same_duration = 10000; // 10秒
+    if (lastUpdateTime && (currentTime - lastUpdateTime) <= same_duration) {
+      // 最後の履歴に加算して時刻を更新
+      history[history.length - 1].count += count;
+      history[history.length - 1].time = formatDate(currentTime);
+    } else {
+      // 新しい履歴を追加
+      history.push({ time: formatDate(currentTime), count: count });
+    }
+
+    // 累積回数を更新
+    totalSquatCount += count;
+    document.getElementById("total-count").innerText = totalSquatCount;
+
+    // 履歴を保存
+    setLocalStorage("totalSquatCount", totalSquatCount);
+    setLocalStorage("squatHistory", history);
+
+    // 最終登録日を更新
+    lastUpdateTime = currentTime;
+    setLocalStorage("lastDate", formatDate(currentTime));
+
+    // 継続日数を保存
+    setLocalStorage("streak", streak);
+
+    // 履歴テーブルを更新
     updateHistoryTable();
-
-    // 直近の更新時間を保持
-    let lastUpdateTime = history.length > 0 ? new Date(history[history.length - 1].time) : null;
-
-    // 登録ボタンのイベントリスナー
-    document.getElementById("add-squat-button").addEventListener("click", function() {
-        const count = 10;
-        const currentTime = new Date();
-
-        // 最後の履歴が10秒以内の場合は加算して時刻を更新
-        const same_duration = 10000
-        if (lastUpdateTime && (currentTime - lastUpdateTime) <= same_duration) {
-            // 最後の履歴に加算して時刻を更新
-            history[history.length - 1].count += count;
-            history[history.length - 1].time = formatDate(currentTime);
-        } else {
-            // 新しい履歴を追加
-            history.push({ time: formatDate(currentTime), count: count });
-        }
-
-        // 累積回数を更新
-        totalSquatCount += count;
-        document.getElementById("total-count").innerText = totalSquatCount;
-        setCookie("totalSquatCount", totalSquatCount, 365);
-
-        // 履歴を保存
-        setCookie("squatHistory", JSON.stringify(history), 365);
-
-        // 最終登録日を更新
-        lastUpdateTime = currentTime;
-        setCookie("lastDate", formatDate(currentTime), 365);
-
-        // 継続日数を保存
-        setCookie("streak", streak, 365);
-
-        // 履歴テーブルを更新
-        updateHistoryTable();
-    });
+  });
 </script>
 
 <!-- エクスポートとインポートのボタン -->
 <script>
-    // エクスポート機能
-    document.getElementById("export-button").addEventListener("click", function () {
-        const data = {
-            totalSquatCount: totalSquatCount,
-            history: history,
-            lastDate: getCookie("lastDate"),
-            streak: streak
-        };
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "squat_history.json";
-        a.click();
-        URL.revokeObjectURL(url);
-    });
+  // エクスポート機能
+  document.getElementById("export-button").addEventListener("click", function () {
+    const data = {
+      totalSquatCount: totalSquatCount,
+      history: history,
+      lastDate: getLocalStorage("lastDate"),
+      streak: streak
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "squat_history.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
-    // インポート機能
-    document.getElementById("import-button").addEventListener("click", function () {
-        document.getElementById("import-input").click();
-    });
+  // インポート機能
+  document.getElementById("import-button").addEventListener("click", function () {
+    document.getElementById("import-input").click();
+  });
 
-    document.getElementById("import-input").addEventListener("change", function (event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    // データの適用
-                    totalSquatCount = importedData.totalSquatCount || 0;
-                    history = importedData.history || [];
-                    lastDate = importedData.lastDate || null;
-                    streak = importedData.streak || 0;
+  document.getElementById("import-input").addEventListener("change", function (event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          // データの適用
+          totalSquatCount = importedData.totalSquatCount || 0;
+          history = importedData.history || [];
+          lastDate = importedData.lastDate || null;
+          streak = importedData.streak || 0;
 
-                    // クッキーに保存
-                    setCookie("totalSquatCount", totalSquatCount, 365);
-                    setCookie("squatHistory", JSON.stringify(history), 365);
-                    setCookie("lastDate", lastDate, 365);
-                    setCookie("streak", streak, 365);
+          // ローカルストレージに保存
+          setLocalStorage("totalSquatCount", totalSquatCount);
+          setLocalStorage("squatHistory", history);
+          setLocalStorage("lastDate", lastDate);
+          setLocalStorage("streak", streak);
 
-                    // 表示を更新
-                    document.getElementById("total-count").innerText = totalSquatCount;
-                    document.getElementById("streak").innerText = streak;
-                    updateHistoryTable();
-                    alert("データが正常にインポートされました!");
-                } catch (error) {
-                    alert("インポートに失敗しました。正しいJSONファイルを選択してください。");
-                }
-            };
-            reader.readAsText(file);
+          // 表示を更新
+          document.getElementById("total-count").innerText = totalSquatCount;
+          document.getElementById("streak").innerText = streak;
+          updateHistoryTable();
+          alert("データが正常にインポートされました!");
+        } catch (error) {
+          alert("インポートに失敗しました。正しいJSONファイルを選択してください。");
         }
-    });
+      };
+      reader.readAsText(file);
+    }
+  });
+  
+  // クッキーからローカルストレージへのデータ移行
+  // ※既にコピー済みの場合は、cookie値に「|copied」が含まれているものとする
+  function migrateCookieToLocalStorage() {
+    const totalSquatCountCookie = getCookie("totalSquatCount");
+    const squatHistoryCookie = getCookie("squatHistory");
+    const lastDateCookie = getCookie("lastDate");
+    const streakCookie = getCookie("streak");
+
+    if (totalSquatCountCookie && totalSquatCountCookie.indexOf("|copied") === -1) {
+      setLocalStorage("totalSquatCount", totalSquatCountCookie);
+      document.cookie = "totalSquatCount=" + totalSquatCountCookie + "|copied; path=/";
+    }
+    if (squatHistoryCookie && squatHistoryCookie.indexOf("|copied") === -1) {
+      setLocalStorage("squatHistory", JSON.parse(squatHistoryCookie));
+      document.cookie = "squatHistory=" + squatHistoryCookie + "|copied; path=/";
+    }
+    if (lastDateCookie && lastDateCookie.indexOf("|copied") === -1) {
+      setLocalStorage("lastDate", lastDateCookie);
+      document.cookie = "lastDate=" + lastDateCookie + "|copied; path=/";
+    }
+    if (streakCookie && streakCookie.indexOf("|copied") === -1) {
+      setLocalStorage("streak", streakCookie);
+      document.cookie = "streak=" + streakCookie + "|copied; path=/";
+    }
+  }
+
+  // ページが読み込まれた時にクッキーからローカルストレージにデータを移行
+  migrateCookieToLocalStorage();
 </script>
 
 </body>
